@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产品抽签</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f0e8;
+    --bg-soft: #ebe5d8;
+    --ink: #1a1612;
+    --ink-soft: #5a544a;
+    --ink-mute: #8c8478;
+    --line: rgba(26, 22, 18, 0.12);
+    --line-strong: rgba(26, 22, 18, 0.25);
+    --accent: #b8442f;
+    --accent-soft: #e8d4cd;
+    --card: #fbf8f2;
+    --c1: #2d5a4f;
+    --c1-soft: #d6e5e0;
+    --c2: #8a4a2b;
+    --c2-soft: #ecd9c9;
+    --c3: #4a3d6b;
+    --c3-soft: #ddd5e8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Noto Sans SC', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(184, 68, 47, 0.04) 0, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(45, 90, 79, 0.04) 0, transparent 40%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
+
+  .frame {
+    width: 100%;
+    max-width: 560px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 44px 40px 36px;
+    position: relative;
+  }
+
+  .frame::before, .frame::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--ink);
+  }
+  .frame::before {
+    top: 10px; left: 10px;
+    border-right: none; border-bottom: none;
+  }
+  .frame::after {
+    bottom: 10px; right: 10px;
+    border-left: none; border-top: none;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 36px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--ink-soft);
+    letter-spacing: 0.05em;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    gap: 12px;
+  }
+  .divider .line {
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+    max-width: 80px;
+  }
+  .divider .dot {
+    width: 4px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .reel-window {
+    position: relative;
+    height: 140px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 28px;
+    box-shadow: inset 0 2px 12px rgba(26, 22, 18, 0.06);
+  }
+
+  .reel-window::before,
+  .reel-window::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 28px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .reel-window::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg-soft), transparent);
+  }
+  .reel-window::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg-soft), transparent);
+  }
+
+  .pointer-left, .pointer-right {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    color: var(--accent);
+    font-size: 14px;
+    font-family: 'DM Mono', monospace;
+  }
+  .pointer-left { left: 12px; }
+  .pointer-right { right: 12px; }
+
+  .reel {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    transition: transform 0s linear;
+  }
+
+  .reel-item {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    padding-left: 0.2em;
+  }
+
+  .reel-item.idle { opacity: 0.45; }
+
+  .reel-item.c1 { color: var(--c1); background: var(--c1-soft); }
+  .reel-item.c2 { color: var(--c2); background: var(--c2-soft); }
+  .reel-item.c3 { color: var(--c3); background: var(--c3-soft); }
+
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  button {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    padding: 14px 32px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--card);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+  }
+
+  button.secondary {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  button:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--card);
+  }
+
+  button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .result {
+    text-align: center;
+    margin-bottom: 28px;
+    min-height: 80px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .result.visible { opacity: 1; }
+
+  .result-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    color: var(--ink-mute);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .result-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    padding-left: 0.3em;
+    color: var(--accent);
+  }
+
+  .history-section {
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+  }
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .history-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+  }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--ink-mute);
+    font-size: 11px;
+    padding: 4px 8px;
+    min-width: auto;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .clear-btn:hover {
+    background: none;
+    color: var(--accent);
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .history-empty {
+    font-size: 12px;
+    color: var(--ink-mute);
+    text-align: center;
+    padding: 12px 0;
+    font-style: italic;
+  }
+
+  .history-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    border-radius: 2px;
+    font-size: 13px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .history-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .history-index {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    min-width: 32px;
+  }
+
+  .history-name {
+    font-weight: 500;
+    letter-spacing: 0.08em;
+  }
+
+  .history-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line);
+  }
+
+  .stat {
+    text-align: center;
+    padding: 8px 4px;
+  }
+
+  .stat-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+
+  .stat-name.c1 { color: var(--c1); }
+  .stat-name.c2 { color: var(--c2); }
+  .stat-name.c3 { color: var(--c3); }
+
+  .stat-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .stat-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 2px;
+  }
+
+  @media (max-width: 480px) {
+    .frame { padding: 36px 24px 28px; }
+    .title { font-size: 28px; }
+    .reel-item { font-size: 30px; }
+    .result-name { font-size: 26px; }
+    .controls { flex-direction: column; }
+    button { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="header">
+    <div class="eyebrow">Random Draw</div>
+    <h1 class="title">产 品 抽 签</h1>
+    <div class="divider">
+      <span class="line"></span>
+      <span class="dot"></span>
+      <span class="line"></span>
+    </div>
+    <p class="subtitle">能气朗 · 瑞安吉 · 甲氧明</p>
+  </header>
+
+  <section class="reel-window">
+    <span class="pointer-left">▶</span>
+    <span class="pointer-right">◀</span>
+    <div class="reel" id="reel"></div>
+  </section>
+
+  <div class="result" id="result">
+    <div class="result-label">本 次 抽 中</div>
+    <div class="result-name" id="result-name">—</div>
+  </div>
+
+  <div class="controls">
+    <button id="draw-btn">开 始 抽 签</button>
+    <button id="reset-btn" class="secondary" style="display:none;">再 抽 一 次</button>
+  </div>
+
+  <section class="history-section">
+    <div class="history-header">
+      <span class="history-title">Draw History</span>
+      <button class="clear-btn" id="clear-btn" style="display:none;">清空记录</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <p class="history-empty" id="history-empty">尚未抽签</p>
+    </div>
+    <div class="stats" id="stats" style="display:none;">
+      <div class="stat">
+        <div class="stat-name c1">能气朗</div>
+        <div class="stat-count" id="stat-0">0</div>
+        <div class="stat-pct" id="pct-0">0%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-name c2">瑞安吉</div>
+        <div class="stat-count" id="stat-1">0</div>
+        <div class="stat-pct" id="pct-1">0%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-name c3">甲氧明</div>
+        <div class="stat-count" id="stat-2">0</div>
+        <div class="stat-pct" id="pct-2">0%</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const products = ['能气朗', '瑞安吉', '甲氧明'];
+  const colorClasses = ['c1', 'c2', 'c3'];
+  const ITEM_HEIGHT = 140;
+
+  const reel = document.getElementById('reel');
+  const drawBtn = document.getElementById('draw-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const resultBox = document.getElementById('result');
+  const resultName = document.getElementById('result-name');
+  const historyList = document.getElementById('history-list');
+  const historyEmpty = document.getElementById('history-empty');
+  const statsEl = document.getElementById('stats');
+
+  let history = [];
+  let spinning = false;
+
+  function makeItem(idx, idle){
+    const div = document.createElement('div');
+    div.className = 'reel-item ' + colorClasses[idx] + (idle ? ' idle' : '');
+    div.textContent = products[idx];
+    return div;
+  }
+
+  function showIdle(){
+    reel.innerHTML = '';
+    for (let i = 0; i < products.length; i++){
+      reel.appendChild(makeItem(i, true));
+    }
+    reel.style.transition = 'none';
+    reel.style.transform = `translateY(-${ITEM_HEIGHT}px)`;
+  }
+  showIdle();
+
+  function buildSpinReel(winnerIndex, repeats){
+    reel.innerHTML = '';
+    const total = repeats * products.length + winnerIndex + 1;
+    for (let i = 0; i < total; i++){
+      reel.appendChild(makeItem(i % products.length, false));
+    }
+    reel.style.transition = 'none';
+    reel.style.transform = 'translateY(0)';
+  }
+
+  function draw(){
+    if (spinning) return;
+    spinning = true;
+    drawBtn.disabled = true;
+    resultBox.classList.remove('visible');
+    resetBtn.style.display = 'none';
+
+    const winnerIndex = Math.floor(Math.random() * products.length);
+    const repeats = 9;
+    buildSpinReel(winnerIndex, repeats);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const targetY = (repeats * products.length + winnerIndex) * ITEM_HEIGHT;
+        reel.style.transition = 'transform 3s cubic-bezier(0.15, 0.85, 0.25, 1)';
+        reel.style.transform = `translateY(-${targetY}px)`;
+      });
+    });
+
+    setTimeout(() => {
+      const winner = products[winnerIndex];
+      resultName.textContent = winner;
+      resultBox.classList.add('visible');
+      drawBtn.style.display = 'none';
+      resetBtn.style.display = 'inline-block';
+      drawBtn.disabled = false;
+
+      history.unshift({
+        name: winner,
+        index: winnerIndex,
+        time: new Date()
+      });
+      renderHistory();
+      spinning = false;
+    }, 3050);
+  }
+
+  function pad(n){ return String(n).padStart(2, '0'); }
+
+  function renderHistory(){
+    if (history.length === 0){
+      historyEmpty.style.display = 'block';
+      statsEl.style.display = 'none';
+      clearBtn.style.display = 'none';
+      historyList.innerHTML = '';
+      historyList.appendChild(historyEmpty);
+      return;
+    }
+
+    historyEmpty.style.display = 'none';
+    clearBtn.style.display = 'inline-block';
+    historyList.innerHTML = '';
+
+    history.slice(0, 20).forEach((h, idx) => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+
+      const left = document.createElement('div');
+      left.className = 'history-left';
+
+      const indexEl = document.createElement('span');
+      indexEl.className = 'history-index';
+      indexEl.textContent = '#' + pad(history.length - idx);
+
+      const name = document.createElement('span');
+      name.className = 'history-name stat-name ' + colorClasses[h.index];
+      name.textContent = h.name;
+
+      left.appendChild(indexEl);
+      left.appendChild(name);
+
+      const time = document.createElement('span');
+      time.className = 'history-time';
+      time.textContent = `${pad(h.time.getHours())}:${pad(h.time.getMinutes())}:${pad(h.time.getSeconds())}`;
+
+      row.appendChild(left);
+      row.appendChild(time);
+      historyList.appendChild(row);
+    });
+
+    // stats
+    statsEl.style.display = 'grid';
+    const counts = [0, 0, 0];
+    history.forEach(h => counts[h.index]++);
+    const total = history.length;
+    for (let i = 0; i < 3; i++){
+      document.getElementById('stat-' + i).textContent = counts[i];
+      document.getElementById('pct-' + i).textContent =
+        total > 0 ? Math.round(counts[i] / total * 100) + '%' : '0%';
+    }
+  }
+
+  function reset(){
+    drawBtn.style.display = 'inline-block';
+    drawBtn.disabled = false;
+    resetBtn.style.display = 'none';
+    resultBox.classList.remove('visible');
+    showIdle();
+  }
+
+  function clearHistory(){
+    history = [];
+    renderHistory();
+  }
+
+  drawBtn.addEventListener('click', draw);
+  resetBtn.addEventListener('click', reset);
+  clearBtn.addEventListener('click', clearHistory);
+})();
+</script>
+</body>
+</html>
